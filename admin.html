@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Заказы — FabrikaPolov</title>
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#0a0a0f;color:#f5e6d3}
+    *{box-sizing:border-box}body{margin:0}main{max-width:1100px;margin:auto;padding:24px 18px}
+    h1{font-size:28px;margin:4px 0 20px}form{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+    input,button{min-height:48px;border-radius:14px;font:inherit;padding:0 15px}
+    input{min-width:250px;flex:1;background:#ffffff10;border:1px solid #ffffff2c;color:inherit}
+    button{border:0;background:#d4a574;color:#25190f;font-weight:750;cursor:pointer}
+    #status{min-height:24px;color:#d4a574}.table-wrap{overflow:auto;border:1px solid #ffffff22;border-radius:20px;background:#ffffff0a}
+    table{width:100%;border-collapse:collapse;min-width:760px}th,td{text-align:left;padding:14px;border-bottom:1px solid #ffffff17;vertical-align:top}
+    th{font-size:12px;color:#d4a574;letter-spacing:.05em}td{font-size:14px}tr:last-child td{border-bottom:0}
+    a{color:#f5e6d3}small{color:#aaa5a3}#status.error{color:#ffaaa0}
+  </style>
+</head>
+<body><main>
+  <h1>Заказы FabrikaPolov</h1>
+  <form id="login"><input id="token" type="password" autocomplete="off" placeholder="ADMIN_TOKEN" aria-label="Токен администратора" required><button type="submit">Загрузить заказы</button></form>
+  <p id="status" role="status"></p>
+  <div class="table-wrap"><table><thead><tr><th>Дата / №</th><th>Имя</th><th>Телефон</th><th>Состав</th><th>Сумма</th></tr></thead><tbody id="orders"></tbody></table></div>
+</main>
+<script>
+  // Данные заказов вставляются как текст, а не как HTML.
+  const form=document.getElementById('login');
+  const status=document.getElementById('status');
+  const tbody=document.getElementById('orders');
+  const cell=(row,text)=>{const td=document.createElement('td');td.textContent=text;row.append(td);return td};
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();status.className='';status.textContent='Загрузка…';tbody.replaceChildren();
+    try{
+      const response=await fetch('/api/orders',{headers:{Authorization:'Bearer '+document.getElementById('token').value}});
+      if(!response.ok)throw new Error(response.status===401?'Неверный ADMIN_TOKEN':'Не удалось загрузить заказы');
+      const {orders}=await response.json();
+      for(const order of orders){
+        const row=document.createElement('tr');
+        cell(row,new Date(order.date).toLocaleString('ru-RU')+' · №'+order.number);
+        cell(row,order.name);
+        const phone=cell(row,'');const link=document.createElement('a');link.href='tel:'+order.phone.replace(/[^+\d]/g,'');link.textContent=order.phone;phone.append(link);
+        cell(row,order.items.map(item=>'№'+item.id+' × '+item.qty+' м²').join(', '));
+        cell(row,new Intl.NumberFormat('ru-RU').format(order.total)+' ₽');
+        tbody.append(row);
+      }
+      status.textContent=orders.length?'Заказов: '+orders.length:'Заказов пока нет';
+    }catch(error){status.className='error';status.textContent=error.message}
+  });
+</script>
+</body></html>
